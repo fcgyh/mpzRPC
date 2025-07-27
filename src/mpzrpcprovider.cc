@@ -76,86 +76,92 @@ void MpzrpcProvider::publishService(::google::protobuf::Service *service)
 };
 
 void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
-                                      muduo::net::Buffer *buffer,
-                                      muduo::Timestamp receiveTime)
+                                     muduo::net::Buffer *buffer,
+                                     muduo::Timestamp receiveTime)
 {
-    /*
-        约定通信协议
-
-        header_size  |    header string    |   args string
-           4 bytes   |  header_size bytes  |  args_size bytes
-        */
-    std::cout << "trigger tcpconnection onMessage callback" << std::endl;
-    // 取网络发送过来的调用rpc指令
-    std::string recv_str = buffer->retrieveAllAsString();
-
-    std::cout << "recv_str: " << recv_str << "##" << std::endl;
-
-    // 从字符流中读取前4个字节的内容
-    uint32_t header_size = 0;
-    recv_str.copy((char *)&header_size, 4, 0);
-
-    // 根据header_size读取数据头的原始字符流，反序列化数据，得到rpc请求的详细信息
-    std::string header_str = recv_str.substr(4, header_size);
-    rpcheader::rpcheader header;
-    if (!header.ParseFromString(header_str))
+    // 外层循环，用于正确处理TCP粘包、半包问题
+    while (buffer->readableBytes() >= 4)
     {
-        LOG_ERR("%s", "header str deserialization failed");
-        return;
+        // 1. 从缓冲区中“偷窥”出头部长度（4字节），但不移动读指针
+        uint32_t header_size = buffer->peekInt32();
+
+        // 2. 检查数据是否足够解析出完整的RPC头部
+        if (buffer->readableBytes() < 4 + header_size)
+        {
+            // 数据不足，这是一个“半包”，退出循环等待下一次数据到达
+            break;
+        }
+
+        // 3. 解析头部，获取参数长度
+        rpcheader::rpcheader header;
+        if (!header.ParseFromArray(buffer->peek() + 4, header_size))
+        {
+            // 头部反序列化失败，记录日志并关闭连接
+            LOG_ERR("header parse error!");
+            conn->shutdown();
+            break;
+        }
+        
+        uint32_t args_size = header.args_size();
+        uint32_t total_size = 4 + header_size + args_size;
+
+        // 4. 检查数据是否足够构成一个完整的RPC请求包
+        if (buffer->readableBytes() < total_size)
+        {
+            // 参数部分数据不完整，是“半包”，退出循环
+            break;
+        }
+
+        // =================================================================
+        //  到这里，说明已收到了一个完整的RPC请求包，开始处理
+        // =================================================================
+
+        // 5. 从缓冲区中正式取走数据
+        buffer->retrieve(4 + header_size); // 取走header_size和header_str
+        std::string args_str = buffer->retrieveAsString(args_size);
+
+        // 6. 获取服务名和方法名
+        std::string service_name = header.service_name();
+        std::string method_name = header.method_name();
+
+        // 7. 查找服务与方法
+        auto service_it = m_servicemap.find(service_name);
+        if (service_it == m_servicemap.end())
+        {
+            LOG_ERR("service:[%s] is not exist!", service_name.c_str());
+            break; 
+        }
+
+        auto method_it = service_it->second.m_methodmap.find(method_name);
+        if (method_it == service_it->second.m_methodmap.end())
+        {
+            LOG_ERR("service:[%s] method:[%s] is not exist!", service_name.c_str(), method_name.c_str());
+            break;
+        }
+
+        const google::protobuf::MethodDescriptor *method_des = method_it->second;
+
+        // 8. 准备请求和响应对象
+        google::protobuf::Message *request = service_it->second.m_service->GetRequestPrototype(method_des).New();
+        if (!request->ParseFromString(args_str))
+        {
+            LOG_ERR("request parse error! content:%s", args_str.c_str());
+            delete request;
+            break;
+        }
+        google::protobuf::Message *response = service_it->second.m_service->GetResponsePrototype(method_des).New();
+        
+        // 9. 绑定用于发送响应的回调函数
+        google::protobuf::Closure *done = google::protobuf::NewCallback<MpzrpcProvider,
+                                                                        const muduo::net::TcpConnectionPtr &,
+                                                                        google::protobuf::Message *>(this,
+                                                                                                        &MpzrpcProvider::SendRpcResponse,
+                                                                                                        conn,
+                                                                                                        response);
+        // 10. 调用本地业务方法
+        service_it->second.m_service->CallMethod(method_des, nullptr, request, response, done);
     }
-
-    std::string service_name = header.service_name();
-    std::string method_name = header.method_name();
-    uint32_t args_size = header.args_size();
-
-    // 获取rpc方法参数的字符流数据
-    std::string args_str = recv_str.substr(4 + header_size, args_size);
-    auto service_it = m_servicemap.find(service_name);
-    if (service_it == m_servicemap.end())
-    {
-        LOG_ERR("%s", "unknown service");
-        return;
-    }
-
-    // 获取method描述符
-    ServiceInfo service_info = service_it->second;
-    auto method_it = service_info.m_methodmap.find(method_name);
-    if (method_it == service_info.m_methodmap.end())
-    {
-        LOG_ERR("%s", "unknown method");
-        return;
-    }
-
-    // 打印调试信息
-    std::cout << "============================================" << std::endl;
-    std::cout << "header_size: " << header_size << std::endl;
-    std::cout << "rpc_header_str: " << header_str << std::endl;
-    std::cout << "service_name: " << service_name << std::endl;
-    std::cout << "method_name: " << method_name << std::endl;
-    std::cout << "args_str: " << args_str << std::endl;
-    std::cout << "============================================" << std::endl;
-
-    // 生成rpc方法调用的请求request和响应response参数
-    const google::protobuf::MethodDescriptor *method_des = method_it->second;
-    google::protobuf::Message *request = service_info.m_service->GetRequestPrototype(method_des).New();
-    if (!request->ParseFromString(args_str))
-    {
-        LOG_ERR("%s", "message request deserialization failed");
-        return;
-    }
-    google::protobuf::Message *response = service_info.m_service->GetResponsePrototype(method_des).New();
-
-    // 给下面的method方法的调用，绑定一个Closure的回调函数
-    google::protobuf::Closure *done = google::protobuf::NewCallback<MpzrpcProvider,
-                                                                    const muduo::net::TcpConnectionPtr &,
-                                                                    google::protobuf::Message *>(this,
-                                                                                                 &MpzrpcProvider::SendRpcResponse,
-                                                                                                 conn,
-                                                                                                 response);
-
-    // Service类callmethod通过method des找到Service重载的对应方法，并传递controller/request/response/done                                                                             conn, response);
-    service_info.m_service->CallMethod(method_des, nullptr, request, response, done);
-};
+}
 
 void MpzrpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, google::protobuf::Message *response)
 {

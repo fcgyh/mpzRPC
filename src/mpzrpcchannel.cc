@@ -42,8 +42,9 @@ void MpzrpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
     }
 
     uint32_t header_size = header_str.size();
+    uint32_t header_size_net = htonl(header_size); // 转换为网络字节序
     std::string send_str;
-    send_str.insert(0, std::string((char *)&header_size, 4));
+    send_str.insert(0, std::string((char *)&header_size_net, 4)); // 使用转换后的值
     send_str += header_str + args_str;
 
     // 使用tcp编程，完成rpc方法的远程调用
