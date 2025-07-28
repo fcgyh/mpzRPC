@@ -75,6 +75,18 @@ void MpzrpcProvider::publishService(::google::protobuf::Service *service)
     m_servicemap.insert({service_name, servic_info});
 };
 
+void MpzrpcProvider::onConnectionCallback(const muduo::net::TcpConnectionPtr &conn)
+{
+    // 和rpc client的连接断开了
+    // if (!conn->connected())
+    // {
+    //     conn->shutdown();
+    // }
+    // 客户端连接断开,但不再需要调用 conn->shutdown()
+    // muduo库会自动处理资源的释放。
+    LOG_INFO("Client connection %s closed.", conn->name().c_str());
+};
+
 void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
                                      muduo::net::Buffer *buffer,
                                      muduo::Timestamp receiveTime)
@@ -175,5 +187,6 @@ void MpzrpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, g
         // 序列化成功后，通过网络把rpc方法执行的结果发送会rpc的调用方
         conn->send(send_str);
     }
-    conn->shutdown(); // 模拟http的短链接服务，由rpcprovider主动断开连接
+    // 使用长连接就不需要每次都主动断开连接了
+    // conn->shutdown(); // 模拟http的短连接服务，由rpcprovider主动断开连接
 }

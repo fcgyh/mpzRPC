@@ -17,14 +17,7 @@ public:
 
     void run();
 
-    void onConnectionCallback(const muduo::net::TcpConnectionPtr &conn)
-    {
-        if (!conn->connected())
-        {
-            // 和rpc client的连接断开了
-            conn->shutdown();
-        }
-    };
+    void onConnectionCallback(const muduo::net::TcpConnectionPtr &conn);
 
     void onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
                            muduo::net::Buffer *buffer,
