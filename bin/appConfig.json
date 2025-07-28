@@ -3,5 +3,6 @@
     "rpcserverport": 8805,
     "zookeeperip":"127.0.0.1",
     "zookeeperport": 2181,
-    "muduothreadnum": 3
+    "muduothreadnum": 3,
+    "businessthreadnum": 4
 }

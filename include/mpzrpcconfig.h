@@ -13,6 +13,7 @@ public:
     const std::string &getZooKeeperIp() const { return m_zookeeperip; };
     const int &getZooKeeperPort() const { return m_zookeeperport; };
     const int &getMuduoThreadNum() const { return m_muduoThreadNum; };
+    const int &getBusinessThreadNum() const { return m_businessThreadNum; };
 
 private:
     std::string m_rpcserverip;
@@ -20,4 +21,5 @@ private:
     std::string m_zookeeperip;
     int m_zookeeperport;
     int m_muduoThreadNum;
+    int m_businessThreadNum;
 };
