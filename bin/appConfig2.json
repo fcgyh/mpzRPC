@@ -1,0 +1,8 @@
+{
+    "rpcserverip" :"127.0.0.1",
+    "rpcserverport": 8806,
+    "zookeeperip":"127.0.0.1",
+    "zookeeperport": 2181,
+    "muduothreadnum": 3,
+    "businessthreadnum": 4
+}

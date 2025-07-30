@@ -37,18 +37,26 @@ void MpzrpcProvider::run()
     m_threadPool = std::make_unique<ThreadPool>(businessThreadNum);
 
     // Zookeeper服务注册
-    ZkClient zkCli;
-    zkCli.Start();
     for (auto &sp : m_servicemap)
     {
+        // 服务名路径: /<service_name>
         std::string service_path = "/" + sp.first;
-        zkCli.Create(service_path.c_str(), nullptr, 0);
+        // 先创建服务路径这个永久性节点
+        ZkClient::getInstance()->Create(service_path.c_str(), nullptr, 0, 0); 
+        
         for (auto &mp : sp.second.m_methodmap)
         {
             std::string method_path = service_path + "/" + mp.first;
+            // 先创建方法路径这个永久性节点
+            ZkClient::getInstance()->Create(method_path.c_str(), nullptr, 0, 0);
+
+            // 在方法路径下，创建带序列号的临时节点
+            std::string ephemeral_node_path = method_path + "/provider_";
             char method_path_data[128] = {0};
             sprintf(method_path_data, "%s:%d", ip.c_str(), port);
-            zkCli.Create(method_path.c_str(), method_path_data, strlen(method_path_data), ZOO_EPHEMERAL);
+            
+            // 使用 ZOO_EPHEMERAL_SEQUENTIAL 标志
+            ZkClient::getInstance()->Create(ephemeral_node_path.c_str(), method_path_data, strlen(method_path_data), (ZOO_EPHEMERAL | ZOO_SEQUENCE));
         }
     }
 
@@ -146,7 +154,7 @@ void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
                                                                                                         conn,
                                                                                                         response);
 
-        // 【核心改动】将业务调用提交到线程池处理
+        // 将业务调用提交到线程池处理
         m_threadPool->enqueue([=]() {
             // 在业务线程中执行RPC方法
             service->CallMethod(method, nullptr, request, response, done);

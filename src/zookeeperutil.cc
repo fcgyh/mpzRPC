@@ -29,23 +29,16 @@ ZkClient::~ZkClient()
     }
 }
 
-// 连接zkserver
-void ZkClient::Start()
+ZkClient* ZkClient::getInstance()
 {
-    std::string zookeeper_ip = MpzrpcApplication::getApp().getConfig().getZooKeeperIp();
-    int zookeeper_port = MpzrpcApplication::getApp().getConfig().getZooKeeperPort();
+    static ZkClient zk;
+    return &zk;
+}
 
-    char port[20] = {0};
-    sprintf(port, "%d", zookeeper_port);
-    std::string connstr = zookeeper_ip + ":" + std::string(port);
-    /*
-	zookeeper_mt：多线程版本
-	zookeeper的API客户端程序提供了三个线程
-	API调用线程 
-	网络I/O线程  pthread_create  poll
-	watcher回调线程 pthread_create
-	*/
-    m_zhandle = zookeeper_init(connstr.c_str(), global_watcher, 30000, nullptr, nullptr, 0);
+// 连接zkserver
+void ZkClient::Init(const std::string& host)
+{
+    m_zhandle = zookeeper_init(host.c_str(), global_watcher, 30000, nullptr, nullptr, 0);
     if (nullptr == m_zhandle)
     {
         std::cout << "zookeeper_init error!" << std::endl;
@@ -60,24 +53,30 @@ void ZkClient::Start()
     std::cout << "zookeeper_init success!" << std::endl;
 }
 
+// Create方法，支持处理已存在的永久节点
 void ZkClient::Create(const char *path, const char *data, int datalen, int state)
 {
     char path_buffer[128];
     int bufferlen = sizeof(path_buffer);
-    int flag;
-    // 先判断path表示的znode节点是否存在，如果存在，就不再重复创建了
-    flag = zoo_exists(m_zhandle, path, 0, nullptr);
-    if (ZNONODE == flag) // 表示path的znode节点不存在
+    
+    // 直接尝试创建节点
+    int flag = zoo_create(m_zhandle, path, data, datalen,
+                        &ZOO_OPEN_ACL_UNSAFE, state, path_buffer, bufferlen);
+    
+    if (flag == ZOK)
     {
-        // 创建指定path的znode节点了
-        flag = zoo_create(m_zhandle, path, data, datalen,
-                          &ZOO_OPEN_ACL_UNSAFE, state, path_buffer, bufferlen);
-        if (flag == ZOK)
+        std::cout << "znode create success... path:" << path << std::endl;
+    }
+    else
+    {
+        // 如果我们创建的是一个永久性节点，并且它已经存在，
+        if (flag == ZNODEEXISTS && state == 0)
         {
-            std::cout << "znode create success... path:" << path << std::endl;
+            // 永久性父节点已存在，无需处理，这符合预期
         }
         else
         {
+            // 对于其他所有情况，都视为严重错误
             std::cout << "flag:" << flag << std::endl;
             std::cout << "znode create error... path:" << path << std::endl;
             exit(EXIT_FAILURE);
@@ -100,4 +99,25 @@ std::string ZkClient::GetData(const char *path)
     {
         return buffer;
     }
+}
+
+// 获取指定路径下的所有子节点
+std::vector<std::string> ZkClient::GetChildren(const char *path)
+{
+    String_vector children;
+    int rc = zoo_get_children(m_zhandle, path, 0, &children);
+    if (rc != ZOK)
+    {
+        std::cout << "get children error... path:" << path << std::endl;
+        return {};
+    }
+
+    std::vector<std::string> children_vec;
+    for (int i = 0; i < children.count; ++i)
+    {
+        children_vec.push_back(children.data[i]);
+    }
+    // Zookeeper C API返回的String_vector需要手动释放
+    deallocate_String_vector(&children);
+    return children_vec;
 }

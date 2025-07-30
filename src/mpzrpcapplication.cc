@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <string>
 
+#include "zookeeperutil.h"
+
 MpzrpcApplication &MpzrpcApplication::getApp()
 {
     static MpzrpcApplication app;
@@ -32,7 +34,13 @@ void MpzrpcApplication::init(int argc, char **argv)
                 break;
             }
         }
+
+        // 1. 加载配置文件
         getConfig().LoadConfigFromFile(config_file);
+
+        // 2. 初始化Zookeeper客户端连接
+        std::string host = getConfig().getZooKeeperIp() + ":" + std::to_string(getConfig().getZooKeeperPort());
+        ZkClient::getInstance()->Init(host);
     }
 };
 
