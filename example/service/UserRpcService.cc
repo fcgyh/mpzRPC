@@ -26,10 +26,11 @@ public:
         std::string name = request->name();
         std::string pwd = request->pwd();
 
-        // 2. 【核心测试代码】模拟一个耗时的业务操作
+        // 2. 业务操作
         std::cout << "Start processing Login request for " << name << "..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(2)); // 睡眠2秒
+        // std::this_thread::sleep_for(std::chrono::seconds(2));
         std::cout << "Finished processing Login request for " << name << "." << std::endl;
+    
         
         // 3. 执行真正的业务
         bool ret = LoginBusiness(name, pwd); 

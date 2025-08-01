@@ -97,7 +97,8 @@ std::string ZkClient::GetData(const char *path)
     }
     else
     {
-        return buffer;
+        // 使用带长度的构造函数，避免依赖'\0'
+        return std::string(buffer, bufferlen);
     }
 }
 

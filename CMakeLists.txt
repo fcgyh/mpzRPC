@@ -1,3 +1,11 @@
+# 设置默认的编译类型为 Release
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# 为Release模式设置优化选项
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+
 # 设置cmake的最低版本和项目名称
 cmake_minimum_required(VERSION 3.0)
 project(mpzrpc)
