@@ -19,3 +19,7 @@ link_directories(${PROJECT_SOURCE_DIR}/lib)
 add_subdirectory(src)
 # example包含了mpzrpc框架使用的示例代码
 add_subdirectory(example)
+
+# 用ASan进行内存错误检测
+add_compile_options(-g -fsanitize=address)
+add_link_options(-fsanitize=address)

@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 #include "mpzrpcapplication.h"
 #include "example.service.pb.h"
@@ -13,25 +15,26 @@ int main(int argc, char **argv)
     // 2. 创建一个 Stub 实例
     example::UserRpcService_Stub stub(new MpzrpcChannel());
 
-    // 演示连续发起三次RPC调用
-    for (int i = 0; i < 3; ++i)
+    // 3. 进入一个无限循环，模拟持续的RPC调用
+    int call_count = 0;
+    while (true)
     {
-        // 3. 准备请求和响应对象
+        // 准备请求和响应对象
         example::LoginRequest request;
         request.set_name("zhang san");
         request.set_pwd("123456");
         
         example::LoginResponse response;
 
-        // 4. 创建 Controller 对象来接收调用状态
+        // 创建 Controller 对象来接收调用状态
         MpzrpcController controller;
 
-        std::cout << "----------------> " << "RPC Call " << i+1 << " <----------------" << std::endl;
+        std::cout << "================> RPC Call " << ++call_count << " ================" << std::endl;
 
-        // 5. 发起RPC调用
+        // 发起RPC调用
         stub.Login(&controller, &request, &response, nullptr); 
 
-        // 6. 检查调用结果
+        // 检查调用结果
         if (controller.Failed())
         {
             std::cout << "RPC call failed: " << controller.ErrorText() << std::endl;
@@ -47,6 +50,9 @@ int main(int argc, char **argv)
                 std::cout << "RPC login response error: " << response.result().errmsg() << std::endl;
             }
         }
+
+        // 每隔2秒发起一次调用
+        std::this_thread::sleep_for(std::chrono::seconds(2));
     }
 
     return 0;

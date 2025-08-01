@@ -20,9 +20,19 @@ void MpzrpcConfig::LoadConfigFromFile(const std::string &config_file)
     catch (const nlohmann::json::parse_error &e)
     {
         std::cerr << "JSON parse error: " << e.what() << std::endl;
-        exit(EXIT_FAILURE); // 致命错误，直接退出
+        exit(EXIT_FAILURE); // 错误，直接退出
     }
 
+    // 读取可选的RPC调用超时配置
+    if (j.find("rpccalltimeout") != j.end())
+    {
+        m_rpcCallTimeout = j["rpccalltimeout"];
+    }
+    else
+    {
+        m_rpcCallTimeout = 5000; // 默认5秒
+    }
+    
     // 读取必要的配置项
     if (j.find("rpcserverip") == j.end() ||
         j.find("rpcserverport") == j.end() ||

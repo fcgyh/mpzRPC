@@ -14,6 +14,7 @@ public:
     const int &getZooKeeperPort() const { return m_zookeeperport; };
     const int &getMuduoThreadNum() const { return m_muduoThreadNum; };
     const int &getBusinessThreadNum() const { return m_businessThreadNum; };
+    const int &getRpcCallTimeout() const { return m_rpcCallTimeout; };
 
 private:
     std::string m_rpcserverip;
@@ -22,4 +23,5 @@ private:
     int m_zookeeperport;
     int m_muduoThreadNum;
     int m_businessThreadNum;
+    int m_rpcCallTimeout; // RPC调用超时时间
 };

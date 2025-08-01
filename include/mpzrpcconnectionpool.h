@@ -7,9 +7,14 @@
 #include <memory>
 #include <unordered_map>
 
-// TCP连接的C++封装，这里我们只需要fd
-// 在更复杂的实现中，可以封装成一个包含fd和心跳时间的Connection对象
-using spConnection = std::shared_ptr<int>;
+// 被智能指针管理的连接对象
+struct PooledConnection {
+    int sockfd;
+    bool is_valid; // 标志此连接是否仍然有效
+    std::string host_key; // 用于归还时查找对应的队列
+};
+
+using spConnection = std::shared_ptr<PooledConnection>;
 
 // 连接池，改为管理到不同主机的连接集合
 class MpzrpcConnectionPool
@@ -32,7 +37,7 @@ private:
     int createConnection(std::string ip, unsigned short port);
     
     // 归还一个连接到它对应的池中
-    void returnConnection(std::string host, int sockfd);
+    void returnConnection(const std::string& host, int sockfd);
 
     // 核心数据结构：一个map，管理到不同主机的连接队列
     std::unordered_map<std::string, std::queue<int>> m_connectionMap;
