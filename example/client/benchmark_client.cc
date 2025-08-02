@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 
     // --- 压测参数配置 ---
     const int THREAD_NUM = 8; // 并发线程数
-    const int REQUESTS_PER_THREAD = 1000; // 每个线程发送的请求数
+    const int REQUESTS_PER_THREAD = 30000; // 每个线程发送的请求数
     const int TOTAL_REQUESTS = THREAD_NUM * REQUESTS_PER_THREAD;
 
     std::cout << "===========================================" << std::endl;
