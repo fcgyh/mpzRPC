@@ -43,9 +43,20 @@ void MpzrpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
     for (const auto& node_name : children_nodes) {
         std::string node_path = method_path + "/" + node_name;
         std::string host_data = ZkClient::getInstance()->GetData(node_path.c_str());
-        if (!host_data.empty()) {
-            host_data_list.push_back(host_data);
+        
+        // 如果GetData失败（返回空字符串），说明该节点可能刚刚下线
+        // 只需跳过这个节点即可
+        if (host_data.empty()) {
+            // LOG_WARN("GetData for node %s failed, maybe it's offline.", node_path.c_str());
+            continue;
         }
+        host_data_list.push_back(host_data);
+    }
+
+    if (host_data_list.empty()) {
+        if (controller) controller->SetFailed(method_path + " failed to get any valid provider data!");
+        if (done) done->Run();
+        return;
     }
 
     if (host_data_list.empty()) {

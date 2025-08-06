@@ -1,0 +1,12 @@
+{
+    "rpcserverip" :"127.0.0.1",
+    "rpcserverport": 8807,
+    "zookeeperip":"127.0.0.1",
+    "zookeeperport": 2181,
+    "muduothreadnum": 3,
+    "businessthreadnum": 4,
+    "rpccalltimeout": 5000,
+    "poolinitsize": 2,
+    "poolmaxsize": 10,
+    "pooltimeout": 1000
+}

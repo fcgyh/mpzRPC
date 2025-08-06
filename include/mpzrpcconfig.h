@@ -15,6 +15,9 @@ public:
     const int &getMuduoThreadNum() const { return m_muduoThreadNum; };
     const int &getBusinessThreadNum() const { return m_businessThreadNum; };
     const int &getRpcCallTimeout() const { return m_rpcCallTimeout; };
+    const int &getPoolInitSize() const { return m_poolInitSize; };
+    const int &getPoolMaxSize() const { return m_poolMaxSize; };
+    const int &getPoolTimeout() const { return m_poolTimeout; };
 
 private:
     std::string m_rpcserverip;
@@ -24,4 +27,7 @@ private:
     int m_muduoThreadNum;
     int m_businessThreadNum;
     int m_rpcCallTimeout; // RPC调用超时时间
+    int m_poolInitSize;
+    int m_poolMaxSize;
+    int m_poolTimeout;
 };

@@ -6,6 +6,11 @@
 #include <mutex>
 #include <memory>
 #include <unordered_map>
+#include <atomic>
+#include <condition_variable>
+#include <chrono>
+
+#include "mpzrpcapplication.h"
 
 // 被智能指针管理的连接对象
 struct PooledConnection {
@@ -39,7 +44,17 @@ private:
     // 归还一个连接到它对应的池中
     void returnConnection(const std::string& host, int sockfd);
 
+    void loadConfig();
+
     // 核心数据结构：一个map，管理到不同主机的连接队列
     std::unordered_map<std::string, std::queue<int>> m_connectionMap;
+    // 每个主机已创建的连接数
+    std::unordered_map<std::string, std::atomic_int> m_connectionCountMap;
     std::mutex m_mapMutex;
+    std::condition_variable m_cv;
+
+    // 配置参数
+    int m_initSize;
+    int m_maxSize;
+    int m_poolTimeout;
 };
