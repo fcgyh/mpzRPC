@@ -105,7 +105,7 @@ void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
 
         rpcheader::rpcheader header;
         if (!header.ParseFromArray(buffer->peek() + 4, header_size)) {
-            LOG_ERR("header parse error!");
+            LOG_ERROR("header parse error!");
             conn->shutdown();
             break;
         }
@@ -125,13 +125,13 @@ void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
 
         auto service_it = m_servicemap.find(service_name);
         if (service_it == m_servicemap.end()) {
-            LOG_ERR("service:[%s] is not exist!", service_name.c_str());
+            LOG_ERROR("service:[%s] is not exist!", service_name.c_str());
             break;
         }
 
         auto method_it = service_it->second.m_methodmap.find(method_name);
         if (method_it == service_it->second.m_methodmap.end()) {
-            LOG_ERR("service:[%s] method:[%s] is not exist!", service_name.c_str(), method_name.c_str());
+            LOG_ERROR("service:[%s] method:[%s] is not exist!", service_name.c_str(), method_name.c_str());
             break;
         }
 
@@ -141,7 +141,7 @@ void MpzrpcProvider::onMessageCallback(const muduo::net::TcpConnectionPtr &conn,
 
         google::protobuf::Message *request = service->GetRequestPrototype(method).New();
         if (!request->ParseFromString(args_str)) {
-            LOG_ERR("request parse error! content:%s", args_str.c_str());
+            LOG_ERROR("request parse error! content:%s", args_str.c_str());
             delete request;
             break;
         }
@@ -168,7 +168,7 @@ void MpzrpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, g
     if (response->SerializeToString(&response_str)) {
         conn->send(response_str);
     } else {
-        LOG_ERR("serialize response_str error!");
+        LOG_ERROR("serialize response_str error!");
     }
     // 注意：response对象是由NewCallback创建的Closure在执行后自动管理的，
     // 通常不需要手动delete response。但request需要注意。

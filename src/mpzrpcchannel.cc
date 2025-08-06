@@ -47,7 +47,7 @@ void MpzrpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
         // 如果GetData失败（返回空字符串），说明该节点可能刚刚下线
         // 只需跳过这个节点即可
         if (host_data.empty()) {
-            // LOG_WARN("GetData for node %s failed, maybe it's offline.", node_path.c_str());
+            LOG_WARN("GetData for node %s failed, maybe it's offline.", node_path.c_str());
             continue;
         }
         host_data_list.push_back(host_data);
