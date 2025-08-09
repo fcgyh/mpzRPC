@@ -12,4 +12,12 @@ public:
                     const google::protobuf::Message *request,
                     google::protobuf::Message *response,
                     google::protobuf::Closure *done) override;
+
+    // 供Watcher回调使用的，用于清空缓存的静态方法
+    static void ClearServiceListCache(const std::string& service_path);
+private:
+    // 服务地址列表的本地缓存
+    static std::unordered_map<std::string, std::vector<std::string>> m_serviceListCache;
+    // 保护缓存的互斥锁
+    static std::mutex m_cacheMutex;
 };

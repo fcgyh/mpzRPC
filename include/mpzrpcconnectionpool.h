@@ -40,7 +40,7 @@ private:
 
     // 创建一个到指定主机的新连接
     int createConnection(std::string ip, unsigned short port);
-    
+
     // 归还一个连接到它对应的池中
     void returnConnection(const std::string& host, int sockfd);
 

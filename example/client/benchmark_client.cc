@@ -78,5 +78,11 @@ int main(int argc, char **argv) {
     std::cout << "QPS (Queries Per Second): " << qps << std::endl;
     std::cout << "===========================================" << std::endl;
 
+    // 在程序退出前，增加一个短暂的“缓冲”时间
+    // 这个时间是为了确保服务端有足够的时间将最后几个响应发回
+    // 避免了客户端提前退出导致的 "Broken pipe"
+    std::cout << "Gracefully shutting down... waiting for final responses..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
     return 0;
 }

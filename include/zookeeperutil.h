@@ -17,7 +17,7 @@ public:
 
     void Create(const char *path, const char *data, int datalen, int state = 0);
     std::string GetData(const char *path);
-    std::vector<std::string> GetChildren(const char *path);
+    std::vector<std::string> GetChildren(const char *path, bool watch = false);
 
 private:
     ZkClient();

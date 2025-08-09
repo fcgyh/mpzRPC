@@ -1,18 +1,29 @@
-#include "zookeeperutil.h"
-#include "mpzrpcapplication.h"
 #include <semaphore.h>
 #include <iostream>
 
+#include "zookeeperutil.h"
+#include "mpzrpcapplication.h"
+#include "mpzrpcchannel.h"
+
 // 全局的watcher观察器   zkserver给zkclient的通知
+// 处理会话事件和子节点变更事件
 void global_watcher(zhandle_t *zh, int type,
                     int state, const char *path, void *watcherCtx)
 {
-    if (type == ZOO_SESSION_EVENT) // 回调的消息类型是和会话相关的消息类型
-    {
-        if (state == ZOO_CONNECTED_STATE) // zkclient和zkserver连接成功
-        {
+    if (type == ZOO_SESSION_EVENT) {
+        if (state == ZOO_CONNECTED_STATE) {
             sem_t *sem = (sem_t *)zoo_get_context(zh);
-            sem_post(sem);
+            if (sem != nullptr) {
+                sem_post(sem);
+            }
+        }
+    }
+    else if (type == ZOO_CHILD_EVENT)
+    {
+        // 当子节点发生变化时，调用Channel的静态方法清空缓存
+        // Zookeeper C API返回的path会包含父路径，可以直接用
+        if (path != nullptr) {
+            MpzrpcChannel::ClearServiceListCache(path);
         }
     }
 }
@@ -25,7 +36,7 @@ ZkClient::~ZkClient()
 {
     if (m_zhandle != nullptr)
     {
-        zookeeper_close(m_zhandle); // 关闭句柄，释放资源  MySQL_Conn
+        zookeeper_close(m_zhandle); // 关闭句柄，释放资源
     }
 }
 
@@ -50,6 +61,7 @@ void ZkClient::Init(const std::string& host)
     zoo_set_context(m_zhandle, &sem);
 
     sem_wait(&sem);
+    sem_destroy(&sem);
     std::cout << "zookeeper_init success!" << std::endl;
 }
 
@@ -103,10 +115,19 @@ std::string ZkClient::GetData(const char *path)
 }
 
 // 获取指定路径下的所有子节点
-std::vector<std::string> ZkClient::GetChildren(const char *path)
+std::vector<std::string> ZkClient::GetChildren(const char *path, bool watch)
 {
     String_vector children;
-    int rc = zoo_get_children(m_zhandle, path, 0, &children);
+    int rc;
+
+    if (watch) {
+        // 使用 zoo_wget_children 来注册一个一次性的watcher
+        // watcher的回调函数就是传入zookeeper_init的那个全局watcher
+        rc = zoo_wget_children(m_zhandle, path, global_watcher, nullptr, &children);
+    } else {
+        rc = zoo_get_children(m_zhandle, path, 0, &children);
+    }
+
     if (rc != ZOK)
     {
         std::cout << "get children error... path:" << path << std::endl;
@@ -118,7 +139,6 @@ std::vector<std::string> ZkClient::GetChildren(const char *path)
     {
         children_vec.push_back(children.data[i]);
     }
-    // Zookeeper C API返回的String_vector需要手动释放
     deallocate_String_vector(&children);
     return children_vec;
 }
